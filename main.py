@@ -1,83 +1,23 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QLabel, QFileDialog, QSlider, QDialog
+from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QFrame, QLabel, QFileDialog, QSlider, QDialog
 from PyQt5 import uic, Qt
 from PyQt5.QtGui import QPixmap, QImage, QMouseEvent
 from qcrop.ui import QCrop
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QRect
 import sys
 import numpy as np
-import opencv_basic_functions as cvf
 import cv2
+
+import BackUpClass
+import opencv_basic_functions as cvf
+import BackUpClass as BackUp
+import ModdedQLabel as ModdedQLabel
+
 #TODO:
 # Necessary: Done: UnDo, ReDo buttons, stack/array with backups
 # 			 Undone: crop, paint functions, text, blur brush
 # Additionally: Crop function only by PyQt or OpenCV, Fix Rotate function
 # https://www.life2coding.com/crop-image-using-mouse-click-movement-python/
 #
-class BackupFiles:
-	def __init__(self, version=np.empty([0]), last_versions=[], future_versions=[]):
-		self.last_versions = last_versions
-		self.current_version = version
-		self.future_versions = future_versions
-
-	def get_cur_version(self):
-		return self.current_version
-
-	def add_elem(self, elem):
-		if self.current_version.size: #!=None
-			self.last_versions.append(self.current_version)
-
-		if len(self.last_versions)>10:
-			self.last_versions.pop(0)
-
-		self.current_version = elem
-
-
-	def event_undo(self):
-		if len(self.last_versions) > 0:
-			tmp_ver = self.last_versions.pop()
-
-			self.future_versions.append(self.current_version)
-			if len(self.future_versions)>10:
-				self.future_versions.pop(0)
-
-			self.current_version = tmp_ver
-
-	def event_redo(self):
-		if len(self.future_versions)>0:
-			tmp_ver = self.future_versions.pop()
-
-			self.last_versions.append(self.current_version)
-			if len(self.last_versions)>10:
-				self.last_versions.pop(0)
-
-			self.current_version = tmp_ver
-
-	def clear_elems(self):
-		if self.last_versions:
-			self.last_versions.clear()
-		if self.future_versions:
-			self.future_versions.clear()
-		#del(self.current_version)
-
-class ModdedQLabel(QLabel):
-	def __init__(self, firstLabel):
-		QLabel.__init__(self, firstLabel)
-		self.is_cropping = False
-		self.x = 0
-		self.y = 0
-
-
-	def mousePressEvent(self, event: QMouseEvent):
-		
-
-	def mouseMoveEvent(self, event: QMouseEvent):
-		self.x = event.x()
-		self.y = event.y()
-
-
-
-
-
 
 class UI(QMainWindow):
 	def __init__(self):
@@ -90,7 +30,9 @@ class UI(QMainWindow):
 		self.image_path = None
 		self.cv2image = None
 		self.cv2image_used = False
-		self.backup = BackupFiles()
+		self.is_highlighting_area = 0
+		self.rect_coords = []
+		self.backup = BackUpClass.BackupFiles()
 
 		# Define our widgets
 		self.buttonFlipHoriz = self.findChild(QPushButton, "buttonFlipHoriz")
@@ -100,16 +42,22 @@ class UI(QMainWindow):
 		self.buttonCrop = self.findChild(QPushButton, "buttonCrop")
 		self.buttonUnDo = self.findChild(QPushButton, "buttonUnDo")
 		self.buttonReDo = self.findChild(QPushButton, "buttonReDo")
+		self.buttonText = self.findChild(QPushButton, "buttonText")
 		#self.buttonRotate = self.findChild(QPushButton, "buttonRotate")
 
-		self.labelPhoto = self.findChild(QLabel, "labelPhoto")
+		#self.firstLabel = self.findChild(QLabel, "labelPhoto")
+
+		self.labelPhoto = ModdedQLabel.ModdedQLabel(self)
+		self.labelPhoto.setGeometry(QRect(180, 100, 700, 600))
+		self.labelPhoto.setFrameShape(QFrame.Box)
+		self.labelPhoto.setText("")
 
 		self.horizontalSliderRotation = self.findChild(QSlider, "horizontalSliderRotation")
 		self.horizontalSliderHue = self.findChild(QSlider, "horizontalSliderHue")
 		self.horizontalSliderSight = self.findChild(QSlider, "horizontalSliderSight")
 		self.horizontalSliderValue = self.findChild(QSlider, "horizontalSliderValue")
 
-		# Click The Dropdown Box
+		# Click The Buttons
 		self.buttonOpenFile.clicked.connect(self.open_image)
 		self.buttonSaveFile.clicked.connect(self.save_image)
 		self.buttonFlipHoriz.clicked.connect(lambda: self.flip_image(0))
@@ -117,8 +65,12 @@ class UI(QMainWindow):
 		self.buttonCrop.clicked.connect(self.crop_image)
 		self.buttonUnDo.clicked.connect(self.act_undo)
 		self.buttonReDo.clicked.connect(self.act_redo)
+		self.buttonText.clicked.connect(self.add_text)
 
+		# Click The Label
+		self.labelPhoto.clicked.connect(lambda: self.rectangle_coordinates(self.rect_coords))
 
+		# Move The Sliders
 		self.horizontalSliderRotation.sliderReleased.connect(self.rotate_image)
 		self.horizontalSliderHue.sliderReleased.connect(self.change_hue)
 		self.horizontalSliderSight.sliderReleased.connect(self.change_sight)
@@ -135,7 +87,8 @@ class UI(QMainWindow):
 
 	def set_fixed_pixmap(self):
 		self.labelPhoto.setPixmap(self.pixmap.scaled
-								  (self.labelPhoto.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+								  (self.labelPhoto.width(), self.labelPhoto.height(),
+								   Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
 	def open_image(self):
 		import os
@@ -269,6 +222,36 @@ class UI(QMainWindow):
 			self.set_fixed_pixmap()
 
 
+	def rectangle_coordinates(self, coordinates):
+		if self.is_highlighting_area:
+
+			x, y = self.labelPhoto.get_x(), self.labelPhoto.get_y()
+			coordinates.append(x)
+			coordinates.append(y)
+
+			if len(self.rect_coords)==4:
+				#self.rect_coords.clear()
+				self.add_text()
+				#self.is_highlighting_area = False
+
+	def add_text(self):
+		if self.image_path:
+			self.is_highlighting_area^=1
+
+			if len(self.rect_coords) == 4:
+				#self.
+				print(self.rect_coords)
+				self.rect_coords.clear()
+			'''
+			if self.labelPhoto.clicked:
+				x1,y1,x2,y2 = self.rectangle_coordinates()
+				print(x1,y1,x2,y2)
+			'''
+
+
+
+
+
 
 
 
@@ -279,5 +262,4 @@ class UI(QMainWindow):
 # Initialize The App
 app = QApplication(sys.argv)
 UIWindow = UI()
-backup = BackupFiles
 app.exec_()

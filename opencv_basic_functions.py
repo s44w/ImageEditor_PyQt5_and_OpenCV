@@ -37,7 +37,7 @@ def crop_image(image):
     return crop
 
 def put_text(image):
-
+    ...
 
 def rotate_image(image, degrees):
     '''
