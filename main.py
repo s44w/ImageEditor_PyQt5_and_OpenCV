@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QFrame, QLabel, QFileDialog, QSlider, QDialog
 from PyQt5 import uic, Qt
-from PyQt5.QtGui import QPixmap, QImage, QMouseEvent
+from PyQt5.QtGui import QPixmap, QImage, QMouseEvent, QPainter
 from qcrop.ui import QCrop
 from PyQt5.QtCore import Qt, QRect
 import sys
@@ -14,7 +14,7 @@ import ModdedQLabel as ModdedQLabel
 
 #TODO:
 # Necessary: Done: UnDo, ReDo buttons, stack/array with backups
-# 			 Undone: crop, paint functions, text, blur brush
+# 			 Undone: crop, paint functions, text, blur brush, return slider values when Undo
 # Additionally: Crop function only by PyQt or OpenCV, Fix Rotate function
 # https://www.life2coding.com/crop-image-using-mouse-click-movement-python/
 #
@@ -27,11 +27,15 @@ class UI(QMainWindow):
 		uic.loadUi("image.ui", self)
 
 		self.pixmap = QPixmap()
+		self.painter = QPainter()
 		self.image_path = None
 		self.cv2image = None
 		self.cv2image_used = False
 		self.is_highlighting_area = 0
-		self.rect_coords = []
+		self.is_cropping = False
+		self.is_adding_text = False
+
+		self.tmpRegion = None
 		self.backup = BackUpClass.BackupFiles()
 
 		# Define our widgets
@@ -52,6 +56,8 @@ class UI(QMainWindow):
 		self.labelPhoto.setFrameShape(QFrame.Box)
 		self.labelPhoto.setText("")
 
+		self.tmpLabel = ModdedQLabel.ModdedQLabel(self)
+
 		self.horizontalSliderRotation = self.findChild(QSlider, "horizontalSliderRotation")
 		self.horizontalSliderHue = self.findChild(QSlider, "horizontalSliderHue")
 		self.horizontalSliderSight = self.findChild(QSlider, "horizontalSliderSight")
@@ -68,7 +74,7 @@ class UI(QMainWindow):
 		self.buttonText.clicked.connect(self.add_text)
 
 		# Click The Label
-		self.labelPhoto.clicked.connect(lambda: self.rectangle_coordinates(self.rect_coords))
+		self.labelPhoto.clicked.connect(self.rectangle_coordinates)
 
 		# Move The Sliders
 		self.horizontalSliderRotation.sliderReleased.connect(self.rotate_image)
@@ -86,9 +92,10 @@ class UI(QMainWindow):
 		self.horizontalSliderRotation.setValue(0)
 
 	def set_fixed_pixmap(self):
-		self.labelPhoto.setPixmap(self.pixmap.scaled
-								  (self.labelPhoto.width(), self.labelPhoto.height(),
-								   Qt.KeepAspectRatio, Qt.SmoothTransformation))
+		self.labelPhoto.setPixmap(
+			self.pixmap.scaled
+			(self.labelPhoto.width(), self.labelPhoto.height(),
+			 Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
 	def open_image(self):
 		import os
@@ -158,18 +165,7 @@ class UI(QMainWindow):
 			self.backup.add_elem(self.cv2image)
 			self.set_fixed_pixmap()
 
-	def crop_image(self):
-		crop_tool = QCrop(self.pixmap)
-		status = crop_tool.exec()
 
-
-		if status == QDialog.Accepted:
-			qImage = QImage(crop_tool.image)
-			self.pixmap = QPixmap.fromImage(qImage)
-			self.cv2image = self.convert_pixmap_to_mat(qImage)
-
-
-		self.set_fixed_pixmap()
 
 	def change_hue(self):
 		self.check_n_set_cv2image()
@@ -221,27 +217,55 @@ class UI(QMainWindow):
 			self.pixmap = self.convert_cv_to_pixmap(self.cv2image)
 			self.set_fixed_pixmap()
 
+	def input_text(self):
+		painter = QPainter
+		painter.begin(self.labelPhoto)
 
-	def rectangle_coordinates(self, coordinates):
-		if self.is_highlighting_area:
 
-			x, y = self.labelPhoto.get_x(), self.labelPhoto.get_y()
-			coordinates.append(x)
-			coordinates.append(y)
 
-			if len(self.rect_coords)==4:
-				#self.rect_coords.clear()
-				self.add_text()
+	def rectangle_coordinates(self):
+		#if self.is_highlighting_area:
+			#self.labelPhoto.is_selecting_region = True
+			if self.labelPhoto.selected_region:
+				self.tmpRegion = self.labelPhoto.get_selected_region()
+
+				if self.is_cropping:  #crop
+					self.pixmap = self.tmpRegion
+					#self.backup.add_elem(self.cv2image)
+
+				if self.is_adding_text:
+					coords = self.self.labelPhoto.center_coords
+
+
+
+
+				self.set_fixed_pixmap()
+
+
 				#self.is_highlighting_area = False
 
 	def add_text(self):
 		if self.image_path:
 			self.is_highlighting_area^=1
+			self.labelPhoto.is_selecting_region = True
+			self.is_adding_text = True
 
-			if len(self.rect_coords) == 4:
-				#self.
-				print(self.rect_coords)
-				self.rect_coords.clear()
+	def crop_image(self):
+			if self.image_path:
+				# qImage = self.tmpRegion
+				self.is_highlighting_area ^= 1
+				self.labelPhoto.is_selecting_region = True
+				self.is_cropping = True
+				# if self.tmpRegion:
+					#	self.pixmap = self.tmpRegion
+					# self.cv2image = self.convert_pixmap_to_mat(self.pixmap)
+
+				#self.set_fixed_pixmap()
+
+
+
+
+
 			'''
 			if self.labelPhoto.clicked:
 				x1,y1,x2,y2 = self.rectangle_coordinates()
