@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QFrame, QLabel, QFileDialog, QSlider, QDialog
+from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QFrame, QLabel, QStackedWidget,\
+	QFileDialog, QSlider, QDialog,  QColorDialog, QLineEdit
 from PyQt5 import uic, Qt
-from PyQt5.QtGui import QPixmap, QImage, QMouseEvent, QPainter
+from PyQt5.QtGui import QPixmap, QImage, QMouseEvent, QPainter, QColor
 from qcrop.ui import QCrop
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, QPoint
 import sys
 import numpy as np
 import cv2
@@ -10,8 +11,8 @@ import cv2
 import BackUpClass
 import opencv_basic_functions as cvf
 import BackUpClass as BackUp
-import ModdedQLabel as ModdedQLabel
-
+import ModdedQLabel
+import TextEditClass
 #TODO:
 # Necessary: Done: UnDo, ReDo buttons, stack/array with backups
 # 			 Undone: crop, paint functions, text, blur brush, return slider values when Undo
@@ -37,6 +38,8 @@ class UI(QMainWindow):
 
 		self.tmpRegion = None
 		self.backup = BackUpClass.BackupFiles()
+		self.textClass = TextEditClass.TextEdit()
+
 
 		# Define our widgets
 		self.buttonFlipHoriz = self.findChild(QPushButton, "buttonFlipHoriz")
@@ -47,16 +50,23 @@ class UI(QMainWindow):
 		self.buttonUnDo = self.findChild(QPushButton, "buttonUnDo")
 		self.buttonReDo = self.findChild(QPushButton, "buttonReDo")
 		self.buttonText = self.findChild(QPushButton, "buttonText")
+		self.buttonColor = self.findChild(QPushButton, "buttonColor")
+
 		#self.buttonRotate = self.findChild(QPushButton, "buttonRotate")
 
 		#self.firstLabel = self.findChild(QLabel, "labelPhoto")
+		self.buttonChooseColor = self.findChild(QPushButton, "buttonChooseColor")
+		self.lineEditText = self.findChild(QLineEdit, "lineEditText")
 
 		self.labelPhoto = ModdedQLabel.ModdedQLabel(self)
 		self.labelPhoto.setGeometry(QRect(180, 100, 700, 600))
 		self.labelPhoto.setFrameShape(QFrame.Box)
-		self.labelPhoto.setText("")
+		self.buttonChooseColor.clicked.connect(self.choose_text_color)
 
-		self.tmpLabel = ModdedQLabel.ModdedQLabel(self)
+		#self.tmpLabel = ModdedQLabel.ModdedQLabel(self)
+		self.stackedWidget = self.findChild(QStackedWidget, "stackedWidget")
+		self.stackedWidget.setCurrentIndex(0)
+
 
 		self.horizontalSliderRotation = self.findChild(QSlider, "horizontalSliderRotation")
 		self.horizontalSliderHue = self.findChild(QSlider, "horizontalSliderHue")
@@ -72,6 +82,7 @@ class UI(QMainWindow):
 		self.buttonUnDo.clicked.connect(self.act_undo)
 		self.buttonReDo.clicked.connect(self.act_redo)
 		self.buttonText.clicked.connect(self.add_text)
+		self.buttonColor.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
 
 		# Click The Label
 		self.labelPhoto.clicked.connect(self.rectangle_coordinates)
@@ -82,6 +93,7 @@ class UI(QMainWindow):
 		self.horizontalSliderSight.sliderReleased.connect(self.change_sight)
 		self.horizontalSliderValue.sliderReleased.connect(self.change_value)
 
+		self.lineEditText.textChanged.connect(self.input_text)
 		# Show The App
 		self.show()
 
@@ -133,13 +145,13 @@ class UI(QMainWindow):
 			return QPixmap(qImage)
 
 	def convert_pixmap_to_mat(self, qImage: QImage):
-		new_image = qImage.convertToFormat(QImage.Format_RGB888)
-		width = new_image.width()
-		height = new_image.height()
-		bits = new_image.bits()
-
-		mat = cv2.Mat(height, width, cv2.CV_8UC3, bits, new_image.bytesPerLine())
-		return mat
+		qImage = QImage(qImage.toImage().convertToFormat(QImage.Format_RGBX8888))
+		#qImage = qImage.convertToFormat(QImage.Format_RGBX8888)
+		ptr = qImage.bits()
+		ptr.setsize(qImage.byteCount())
+		cv_im_in = np.array(ptr, copy=True).reshape(qImage.height(), qImage.width(), 4)
+		cv_im_in = cv2.cvtColor(cv_im_in, cv2.COLOR_BGRA2RGB)
+		return cv_im_in
 
 	def check_n_set_cv2image(self):
 		if not self.cv2image_used:
@@ -217,38 +229,48 @@ class UI(QMainWindow):
 			self.pixmap = self.convert_cv_to_pixmap(self.cv2image)
 			self.set_fixed_pixmap()
 
-	def input_text(self):
-		painter = QPainter
-		painter.begin(self.labelPhoto)
-
 
 
 	def rectangle_coordinates(self):
-		#if self.is_highlighting_area:
-			#self.labelPhoto.is_selecting_region = True
 			if self.labelPhoto.selected_region:
 				self.tmpRegion = self.labelPhoto.get_selected_region()
 
-				if self.is_cropping:  #crop
+				if self.labelPhoto.get_cropping_bool():  #crop
 					self.pixmap = self.tmpRegion
-					#self.backup.add_elem(self.cv2image)
-
-				if self.is_adding_text:
-					coords = self.self.labelPhoto.center_coords
+					self.cv2image = self.convert_pixmap_to_mat(self.pixmap)
+					self.cv2image_used = True
 
 
 
 
+
+				#self.labelPhoto.set_puttingText_bool(False)
+				#self.labelPhoto.set_cropping_bool(False)
+				self.backup.add_elem(self.cv2image)
 				self.set_fixed_pixmap()
 
 
-				#self.is_highlighting_area = False
-
 	def add_text(self):
 		if self.image_path:
-			self.is_highlighting_area^=1
-			self.labelPhoto.is_selecting_region = True
-			self.is_adding_text = True
+			self.stackedWidget.setCurrentIndex(2) #choose panel with text settings
+			self.labelPhoto.is_putting_text = True
+
+			tmpCVimage = self.convert_pixmap_to_mat(self.pixmap)
+
+			coords = self.labelPhoto.get_y(), self.labelPhoto.get_x()
+			self.cv2image = cvf.put_text(tmpCVimage,
+										 textLine=self.textClass.getText(),
+										 coords=coords,
+										 textSize=self.textClass.getTextSize(),
+										 color=self.textClass.getTextColor())
+			self.cv2image_used = True
+
+			self.pixmap = self.convert_cv_to_pixmap(self.cv2image)
+
+			self.backup.add_elem(self.cv2image)
+			self.set_fixed_pixmap()
+
+
 
 	def crop_image(self):
 			if self.image_path:
@@ -262,15 +284,22 @@ class UI(QMainWindow):
 
 				#self.set_fixed_pixmap()
 
+	def input_text(self):
+		self.textClass.setText(self.lineEditText.text())
+		#print(self.text.getText())
 
 
 
 
-			'''
-			if self.labelPhoto.clicked:
-				x1,y1,x2,y2 = self.rectangle_coordinates()
-				print(x1,y1,x2,y2)
-			'''
+
+	def choose_text_color(self):
+		dialog = QColorDialog(self)
+		#dialog.exec_()
+		color = dialog.getColor()
+		self.buttonChooseColor.setStyleSheet("QWidget { background-color: %s }" %color.name())
+		self.textClass.setTextColor(color.name())
+		#print(color.name())
+
 
 
 

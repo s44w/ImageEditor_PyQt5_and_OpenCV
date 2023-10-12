@@ -36,8 +36,14 @@ def crop_image(image):
 
     return crop
 
-def put_text(image):
-    ...
+
+def put_text(image, textLine, coords, textSize, color):
+    #выделяю зону -> оставляю ее -> набираю текст (потом) ->
+
+    output = image.copy()
+    #height, width, channels = output.shape
+    cv2.putText(output, textLine, coords, cv2.FONT_HERSHEY_SIMPLEX, textSize, color, 4)
+    return output
 
 def rotate_image(image, degrees):
     '''
