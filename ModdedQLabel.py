@@ -8,15 +8,14 @@ class ModdedQLabel(QLabel):
 	clicked = QtCore.pyqtSignal()
 	def __init__(self, centralWidget):
 		QLabel.__init__(self, centralWidget)
-		self.is_cropping = 0
-		self.is_putting_text = 0
-		self.is_selecting_region = False
+		self.is_cropping = False
+		self.is_putting_text = False
 		self.selected_region = None
 
 		self.x = 0
 		self.y = 0
-		self.center_coords = (0, 0)
-
+		#self.height = 0
+		#self.width = 0
 	'''
 	def paintEvent(self, event):
 		super(ModdedQLabel, self).paintEvent(event)
@@ -27,30 +26,24 @@ class ModdedQLabel(QLabel):
 		self.painter.setPen(QColor(255, 255, 255))
 		self.painter.end()
 	'''
-
-	#def mousePressEvent(self, event: QMouseEvent):
-	#	return (self.x, self.y)
 	def mousePressEvent(self, event: QMouseEvent):
 		self.x = event.x()
 		self.y = event.y()
-		#self.clicked.emit()
 
-		if self.is_cropping or self.is_putting_text:
+		if self.is_cropping:
 			self.originQPoint = event.pos()
 			self.currentQRubberBand = QRubberBand(QRubberBand.Rectangle, self)
 			self.currentQRubberBand.setGeometry(
 				QtCore.QRect(self.originQPoint, QtCore.QSize()))
-
 			self.currentQRubberBand.show()
 
-		#print(self.x, self.y)
 		QLabel.mousePressEvent(self, event)
 
 	def mouseMoveEvent(self, event: QMouseEvent):
 		self.x = event.x()
 		self.y = event.y()
 		#print(self.x, self.y)
-		if self.is_selecting_region:
+		if self.is_cropping or self.is_putting_text:
 			self.currentQRubberBand.setGeometry(
 				QtCore.QRect(self.originQPoint, event.pos())
 				.normalized())
@@ -58,20 +51,16 @@ class ModdedQLabel(QLabel):
 		QLabel.mouseMoveEvent(self, event)
 
 	def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
-		if self.is_cropping or self.is_putting_text:
-			self.x = event.x()
-			self.y = event.y()
-			if self.is_cropping:
-				self.center_coords = (event.x(),# - self.originQPoint.x())//2,
-								  event.y()) #- self.originQPoint.y())//2 )
-			elif self.is_putting_text:
-				self.center_coords = (( event.x() - self.originQPoint.x())//2,
-									  (event.y() - self.originQPoint.y())//2)
+		self.x = event.x()
+		self.y = event.y()
+
+		if self.is_cropping:
 			self.currentQRubberBand.hide()
 			curQRect = self.currentQRubberBand.geometry()
 			self.currentQRubberBand.deleteLater()
 			self.selected_region = self.pixmap().copy(curQRect)
-			self.clicked.emit()
+
+		self.clicked.emit()
 
 
 

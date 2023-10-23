@@ -1,12 +1,6 @@
 import cv2
+import numpy as np
 import imutils
-def save_image(image):
-    print('Name the image:', end = '')
-    name = input()
-    name+='.jpg'
-    cv2.imwrite(name, image)
-    return
-
 
 def resize_image(image, height = 0, width = 0, coef = 0):
     res = None
@@ -30,17 +24,13 @@ def resize_image(image, height = 0, width = 0, coef = 0):
         res = cv2.resize(image, None, fx = coef, fy = coef, interpolation=mode)
     return res
 
-def crop_image(image):
-    crop = None
-    cropping = False
-
-    return crop
-
 
 def put_text(image, textLine, coords, textSize, color):
     #выделяю зону -> оставляю ее -> набираю текст (потом) ->
 
     output = image.copy()
+    coef = image.shape[0]/coords[0]
+
     #height, width, channels = output.shape
     cv2.putText(output, textLine, coords, cv2.FONT_HERSHEY_SIMPLEX, textSize, color, 4)
     return output
@@ -56,41 +46,42 @@ def rotate_image(image, degrees):
     res = imutils.rotate(image, degrees)
     return res
 
+# -----------------------------COLOR FILTERS------------------------
+
+def filterSepia(image):
+    sepiaImage = np.array(image, dtype=np.float64)
+    sepiaImage = cv2.transform(sepiaImage, np.matrix([[0.272, 0.543, 0.131],
+                                                      [0.349, 0.686, 0.168],
+                                                      [0.393, 0.769, 0.189]]))
+    sepiaImage[np.where(sepiaImage>255)] = 255
+    sepiaImage = np.array(sepiaImage, dtype=np.uint8)
+
+    return sepiaImage
+
+def filterInvert(image):
+    invertedImage = cv2.bitwise_not(image)
+
+    return invertedImage
+
+
+def filterGray(image):
+    grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    img = cv2.cvtColor(grayImage, cv2.COLOR_GRAY2BGR)
+    return img
+
+def filterSharpen(image):
+    kernel = np.array([[-1, -1, -1],
+                       [-1, 9.5, -1],
+                       [-1, -1, -1]])
+    sharpenedImage = cv2.filter2D(image, -1, kernel)
+    return sharpenedImage
+
+# ---------------------------------------------------------------------
+
 def flip_image(image, mode):
     res = cv2.flip(image, mode)
     return res
-def choose_mode(image):
-    print('Input \'rot\' to rotate image,   \'res\' to resize,   \'crp\' to crop,',
-          '\'flp\' to flip', sep = '')
-    print('Choose modification of image:', end = '')
 
-    mode = str(input())
-    res = None
-    print()
-    match(mode):
-        case 'rot':
-            print('Input degrees:', end = '')
-            degrees = int(input())
-
-            res = rotate_image(image, degrees)
-
-        case 'crp':
-            print('Input x1, x2, y1, y2:', end = '')
-            params = list(map(float, input().split()))
-            res = crop_image(image, *params)
-
-        case 'res':
-            print('Input height, width and coefficient:', end = '')
-            params = list(map(float, input().split()))
-            res = resize_image(image, *params)
-
-        case 'flp':
-            print('Choose side of flip - \'0\' to flip horizontally, \'1\' to vertically, '
-                  '\n\'-1\' to horizontally and vertically', sep = '')
-            mode = int(input())
-            res = flip_image(image, mode)
-
-    return res
 
 
 
