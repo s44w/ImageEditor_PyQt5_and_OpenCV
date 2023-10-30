@@ -1,12 +1,18 @@
 import numpy as np
 class BackupFiles:
-	def __init__(self, version=np.empty([0]), last_versions=[], future_versions=[]):
-		self.last_versions = last_versions
-		self.current_version = version
-		self.future_versions = future_versions
+	def __init__(self):
+		self.last_versions = []
+		self.current_version = np.empty([0])
+		self.future_versions = []
 
 	def get_cur_version(self):
 		return self.current_version
+
+	def get_prev_version(self):
+		if len(self.last_versions):
+			return self.last_versions[-1]
+		else:
+			return self.current_version
 
 	def add_elem(self, elem):
 		if self.current_version.size: #!=None
@@ -43,4 +49,3 @@ class BackupFiles:
 			self.last_versions.clear()
 		if self.future_versions:
 			self.future_versions.clear()
-		#del(self.current_version)

@@ -2,47 +2,12 @@ import cv2
 import numpy as np
 import imutils
 
-def resize_image(image, height = 0, width = 0, coef = 0):
-    res = None
-    mode = cv2.INTER_LINEAR if (height > image.shape[0] or width > image.shape[1] or coef > 1) else cv2.INTER_AREA
-
-    if height and width and coef:
-        print('Incorrect input, try again')
-
-    elif height and width:
-        res = cv2.resize(image, (height, width), interpolation=mode)
-
-    elif height:
-        f = float(height)/image.shape[0]
-        width = int(image.shape[1]*f)
-        res = cv2.resize(image, (height, width), interpolation=mode)
-    elif width:
-        f = float(width)/image.shape[1]
-        height = int(image.shape[0]*f)
-        res = cv2.resize(image, (height, width), interpolation=mode)
-    elif coef:
-        res = cv2.resize(image, None, fx = coef, fy = coef, interpolation=mode)
-    return res
-
-
 def put_text(image, textLine, coords, textSize, color):
-    #выделяю зону -> оставляю ее -> набираю текст (потом) ->
-
     output = image.copy()
-    coef = image.shape[0]/coords[0]
-
-    #height, width, channels = output.shape
     cv2.putText(output, textLine, coords, cv2.FONT_HERSHEY_SIMPLEX, textSize, color, 4)
     return output
 
 def rotate_image(image, degrees):
-    '''
-    (h,w) = image.shape[:2]
-    center = (w/2, h/2)
-    prep_object = cv2.getRotationMatrix2D(center, degrees, 1.0) #матрица для поворота
-
-    res = cv2.warpAffine(image, prep_object, (w,h))
-    '''
     res = imutils.rotate(image, degrees)
     return res
 
@@ -81,6 +46,18 @@ def filterSharpen(image):
 def flip_image(image, mode):
     res = cv2.flip(image, mode)
     return res
+
+def increase_brightness(img, value):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    v = cv2.add(v, value)
+    v[v>255] = 255
+    v[v<0] = 0
+
+    final_hsv = cv2.merge((h, s, v))
+    img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    return img
 
 
 
