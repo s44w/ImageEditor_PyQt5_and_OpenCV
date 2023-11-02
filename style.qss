@@ -1,0 +1,65 @@
+#buttonReDo, #buttonUnDo, #buttonOpenFile, #buttonSaveFile, #buttonFlipHoriz,
+#buttonFlipVertic, #buttonRotate90, #labelTextRotation, #stackedWidget,
+#comboTextSize, #comboBoxFilters {
+    background-color: #f2ead3;
+    color: black;
+}
+
+#buttonCrop, #buttonRotation, #buttonColor, #buttonText {
+    background-color: #f5f5f5;
+    color: black;
+}
+
+#buttonChooseColor {
+    background-color: black;
+}
+
+#labelTextHue, #labelTextBrightness, #labelTextContrast,
+#labelTextFilters, #labelTextText, #labelTextTextSizeText, #labelTextTextColorText{
+    background-color: #f2ead3;
+}
+
+QLineEdit{
+    background-color: #f2ead3;
+    border: 2px solid rgb(0, 0, 0);
+}
+
+QSlider::groove:horizontal{
+    border: 1px solid black;
+    height: 2px;
+}
+
+QSlider::handle:horizontal{
+    background: black;
+    width: 5px;
+    margin: -5px -1px;
+    border-radius: 5px;
+    border: 1px solid black;
+}
+
+QSlider::add-page:horizontal{
+    background: qlineargradient(0,0,0,0,0 #f5f5f5,0 black);
+}
+
+QSlider::sub-page:horizontal{
+    background: black;
+}
+
+#label {
+    background-image: url(\"icons/editor_design2.png\");
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#stackedWidget {
+    background: #f2ead3;
+    color: black;
+}
+
+#lineEditText {
+    background-color: #f2ead3;
+    border: 2px solid rgb(0, 0, 0);
+}
+
+
