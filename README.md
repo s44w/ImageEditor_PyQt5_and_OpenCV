@@ -14,7 +14,7 @@ Simple Image Editor made with Python 3.10, PyQt5 and OpenCV!
 [PyQT](https://www.qt.io/qt-for-python) to make UI
 [Book "Learning Python"](https://www.oreilly.com/library/view/learning-python-5th/9781449355722/) well... name speaks for itself
 
-##To be done
+## To be done
 - Add more features
 - Make a website
 - Hug you for reading it!
